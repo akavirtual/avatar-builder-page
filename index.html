@@ -1,138 +1,90 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-    <title>Avatar builder</title>
-    <style>
-        html, body { height:100%; margin:0; background:#000; overflow:hidden; }
-        :root { --vh: 100dvh; }
-
-        #unity-container{
-            position:fixed; inset:0;
-            padding: env(safe-area-inset-top) env(safe-area-inset-right)
-            env(safe-area-inset-bottom) env(safe-area-inset-left);
-            display:grid; place-items:center; background:#000;
-        }
-        #unity-canvas{ width:100vw; height:var(--vh); display:block; touch-action:none; }
-
-        /* Splash with logo centered and loading bar at the bottom */
-        #splash{
-            position:fixed; inset:0; z-index:10;
-            display:grid;
-            grid-template-rows: 1fr auto;   /* logo in the free space, footer at bottom */
-            justify-items:center; align-items:center;
-            background:#0b0b0b;
-            transition: opacity .4s ease;
-        }
-        #splash.hidden{ opacity:0; pointer-events:none; }
-
-        #splash .logo{
-            width:min(42vw,220px); height:auto; image-rendering:auto;
-            filter: drop-shadow(0 6px 18px rgba(255,255,255,.08));
-        }
-
-        #loading-footer{
-            width:100%;
-            display:flex; flex-direction:column; align-items:center; gap:10px;
-            padding: 14px 20px calc(200px + env(safe-area-inset-bottom));
-        }
-        #bar{
-            width:min(90vw,520px); height:10px;
-            border-radius:999px; background:#2a2a2a; overflow:hidden;
-        }
-        #bar > i{
-            display:block; height:100%; width:0%;
-            background:linear-gradient(90deg,#ffb36b,#ff6aa3);
-            transition:width .12s linear;
-        }
-        #pct{
-            font:500 12px/1.2 ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial;
-            color:#d8d8d8; opacity:.9;
-        }
-
-        #log{
-            position:fixed; left:8px; bottom:8px; color:#f55;
-            font:12px/1.4 monospace; white-space:pre-wrap;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Avatar Builder</title>
+  <script type="module" crossorigin src="./assets/index-DkTkL_M5.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DBIPQFr0.css">
 </head>
 <body>
-<!-- Splash (logo centered, loading bar at bottom) -->
-<div id="splash">
-    <img class="logo" src="TemplateData/logo.png" alt="Logo"/>
-    <div id="loading-footer">
-        <div id="bar"><i id="fill"></i></div>
-        <div id="pct">0%</div>
+  <header class="topbar">
+    <a class="logo" href="#/edit"><span class="logo-mark"></span><span class="logo-text">AVATAR<br />BUILDER</span></a>
+    <nav class="topnav">
+      <a class="pill" data-route="edit" href="#/edit"><i data-icon="user"></i>Avatar Edit</a>
+      <a class="pill" data-route="gallery" href="#/gallery"><i data-icon="grid"></i>My Avatars</a>
+    </nav>
+    <div class="topbar-right">
+      <button class="hbtn" id="btnSearch" title="Item Search"><i data-icon="search"></i><span>Item Search</span></button>
+      <button class="hbtn round" id="btnHelp" title="Help" aria-label="Help"><i data-icon="help"></i></button>
     </div>
-</div>
+  </header>
 
-<!-- Unity canvas -->
-<div id="unity-container">
-    <canvas id="unity-canvas" tabindex="0"></canvas>
-</div>
-<pre id="log"></pre>
+  <main id="editor" class="view">
+    <div id="viewport"></div>
 
-<script>
-    // --- Mobile dynamic viewport height fix ---
-    function setVHVar() {
-        const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        document.documentElement.style.setProperty('--vh', vh + 'px');
-    }
-    setVHVar();
-    window.addEventListener('resize', setVHVar);
-    window.visualViewport && window.visualViewport.addEventListener('resize', setVHVar);
+    <div class="tabs" id="tabs"></div>
+    <aside class="side" id="side">
+      <nav class="cats" id="cats"></nav>
+      <section class="panel" id="panel"></section>
+    </aside>
 
-    // === Project build name (no hashed filenames) ===
-    const BUILD_NAME = "WebGL";
+    <aside class="side creator" id="creator" hidden></aside>
+    <div class="color-panel" id="colorPanel" hidden></div>
 
-    const buildUrl  = "Build";
-    const loaderUrl = `${buildUrl}/${BUILD_NAME}.loader.js`;
+    <div class="toolbar" id="toolbar"></div>
 
-    const config = {
-        dataUrl:       `${buildUrl}/${BUILD_NAME}.data.unityweb`,
-        frameworkUrl:  `${buildUrl}/${BUILD_NAME}.framework.js.unityweb`,
-        codeUrl:       `${buildUrl}/${BUILD_NAME}.wasm.unityweb`,
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "Company",
-        productName: BUILD_NAME,
-        productVersion: "1.0",
-        matchWebGLToCanvasSize: true,
-        devicePixelRatio: Math.min(window.devicePixelRatio || 1, 1.5),
-    };
+    <div class="bottom-left">
+      <button class="btn ghost" id="btnBack"><i data-icon="back"></i>Back without Saving</button>
+      <button class="btn primary" id="btnSave"><i data-icon="save"></i>Save<span class="badge" id="saveBadge" hidden>!</span></button>
+    </div>
+    <div class="bottom-right">
+      <div class="stats">
+        <div class="stat-chip"><i data-icon="glasses"></i><span id="statAcc">0/10</span></div>
+        <div class="stat-line">Tris :<b id="statTris">0</b></div>
+        <div class="stat-line" id="statHeightWrap">Height :<b id="statHeight">–</b></div>
+      </div>
+      <button class="btn ghost small" id="btnMisc"><i data-icon="gear"></i>Misc</button>
+      <div class="misc-menu" id="miscMenu" hidden>
+        <button data-misc="backup">Create a Backup</button>
+        <button data-misc="restore">Restore from Backup</button>
+        <button data-misc="vrm">VRM Export</button>
+        <button data-misc="glb">GLB Export</button>
+        <button data-misc="license">License</button>
+        <button data-misc="close" class="close">Close →</button>
+      </div>
+    </div>
 
-    const canvas = document.getElementById("unity-canvas");
-    const splash = document.getElementById("splash");
-    const fill   = document.getElementById("fill");
-    const pctEl  = document.getElementById("pct");
-    const logEl  = document.getElementById("log");
-    const log = (m)=>{ logEl.textContent += m + "\n"; console.warn(m); };
+    <div class="photo-bar" id="photoBar" hidden></div>
+    <div class="edit-bar" id="editBar" hidden></div>
+    <div class="flash" id="flash" hidden></div>
 
-    // Pre-flight: verify files exist (helps catch wrong names/paths quickly)
-    function head(url){ return fetch(url,{method:"HEAD"}).then(r=>{ if(!r.ok) throw new Error(`${url} → ${r.status}`); }); }
+    <div class="progress" id="progress" hidden>
+      <div class="loading-row"><span class="spinner"></span><span>Loading data...</span><span id="progressPct">0%</span></div>
+      <div class="bar"><div id="progressBar"></div></div>
+    </div>
 
-    Promise.all([ head(loaderUrl), head(config.dataUrl), head(config.frameworkUrl), head(config.codeUrl) ])
-        .then(()=>{
-            const s = document.createElement("script");
-            s.src = loaderUrl;
-            s.onload = () => {
-                if (typeof createUnityInstance !== "function") { log("Loader loaded but createUnityInstance is undefined."); return; }
+    <div class="loading" id="loading">
+      <div class="loading-card">
+        <div class="loading-art"><span class="logo-mark big"></span><div class="loading-title">AVATAR BUILDER</div></div>
+        <div class="loading-row"><span class="spinner"></span><span id="loadingText">Loading data...</span><span id="loadingPct">0%</span></div>
+        <div class="bar"><div id="loadingBar"></div></div>
+      </div>
+    </div>
+  </main>
 
-                // Progress callback -> update bar & percentage
-                createUnityInstance(canvas, config, (progress)=>{
-                    const p = Math.floor(progress * 100);
-                    fill.style.width = p + "%";
-                    pctEl.textContent = p + "%";
-                }).then(()=>{
-                    // Hide splash after a short delay for a smoother transition
-                    setTimeout(()=> splash.classList.add('hidden'), 300);
-                }).catch(e => log("Unity init error: " + e));
-            };
-            s.onerror = () => log("Failed to load loader: " + loaderUrl);
-            document.body.appendChild(s);
-        })
-        .catch(e => log("Missing or blocked build file: " + e.message));
+  <main id="gallery" class="view" hidden>
+    <div class="gallery-head">
+      <h1>My Avatars</h1>
+      <button class="btn primary" id="btnNewAvatar"><i data-icon="plus"></i>New avatar</button>
+    </div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </main>
 
-</script>
+  <div class="modal" id="modal" hidden><div class="modal-card" id="modalCard"></div></div>
+  <div class="toast" id="toast" hidden></div>
+  <input type="file" id="fileInput" hidden />
+
 </body>
 </html>
